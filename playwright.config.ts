@@ -1,19 +1,27 @@
 import { defineConfig, devices } from "@playwright/test";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 
-const envName = process.env.ENV_NAME || "local";
-
-// 🔐 Load + validate env file
+const isCI = !!process.env.CI;
+// Decide which env file to load
+const envName = process.env.ENV_NAME || (isCI ? 'ci' : 'local');
 const envFile = path.resolve(__dirname, `env/.env.${envName}`);
-const result = dotenv.config({ path: envFile });
 
-if (result.error) {
-  throw new Error(`❌ Could not load env file: ${envFile}`);
+// Load if available (in CI, .env.ci should exist because it's checked in)
+if (fs.existsSync(envFile)) {
+  dotenv.config({ path: envFile });
+  console.log(`[env] Loaded ${envFile}`);
+} else {
+  // In CI, you probably *do* want to fail if .env.ci is missing
+  if (isCI) {
+    throw new Error(`❌ Could not load required CI env file: ${envFile}`);
+  }
+  console.log(`[env] Not found: ${envFile}. Using process.env values.`);
 }
 
-// ✅ Now it's safe to read env vars
-const baseURL = process.env.BASE_URL || "http://localhost:3000";
+const baseURL = process.env.BASE_URL || 'http://localhost:3000';
+
 
 /**
  * Read environment variables from file.
